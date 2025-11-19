@@ -25,22 +25,8 @@ def generate_tiles(width: int, height: int, tile_size: int = 512, overlap: int =
 
 
 def run_instanseg_on_tile(tile_array: np.ndarray):
-    """
-    Run InstanSeg inference on a tile.
-    
-    TODO: Replace with real InstanSeg inference.
-    For the take-home, this returns an empty result or a simple placeholder.
-    Structure: list of polygons, each polygon is {"points": [(x1, y1), (x2, y2), ...]}
-    
-    Real integration would look like:
-        from instanseg import InstanSeg
-        model = InstanSeg()
-        result = model.predict(tile_array)
-        return result.polygons
-    """
-    # Placeholder: return empty list
-    # In production, this would call the actual InstanSeg model
-    return []
+    """Stub for InstanSeg inference — returns no polygons in this demo."""
+    return []  # Replace with InstanSeg model.predict(tile_array) in production
 
 
 async def instanseg_process_wsi(job: Job, wsi_path: str):
