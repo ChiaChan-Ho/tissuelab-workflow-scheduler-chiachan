@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Scheduler</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #555;
+            margin: 30px 0 15px 0;
+            font-size: 1.2em;
+        }
+
+        section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .current-user {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e7f3ff;
+            border-radius: 4px;
+            color: #0066cc;
+        }
+
+        .workflow-card {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+
+        .workflow-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .workflow-id {
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .progress-container {
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #28a745;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .jobs-list {
+            margin-top: 15px;
+        }
+
+        .job-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .job-info {
+            flex: 1;
+        }
+
+        .job-info span {
+            display: inline-block;
+            margin-right: 15px;
+            font-size: 0.9em;
+        }
+
+        .job-status {
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-running {
+            background: #cfe2ff;
+            color: #084298;
+        }
+
+        .status-succeeded {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .status-failed {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        .status-cancelled {
+            background: #e2e3e5;
+            color: #41464b;
+        }
+
+        .cancel-btn {
+            background: #dc3545;
+            padding: 5px 12px;
+            font-size: 0.85em;
+        }
+
+        .cancel-btn:hover {
+            background: #c82333;
+        }
+
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .message-success {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .message-error {
+            background: #f8d7da;
+            color: #842029;
+        }
+    </style>
+</head>
+<body>
+    <h1>Workflow Scheduler</h1>
+
+    <!-- User Settings -->
+    <section id="user-settings">
+        <h2>User Settings</h2>
+        <div class="form-group">
+            <label for="userIdInput">User ID</label>
+            <input type="text" id="userIdInput" placeholder="Enter your user ID">
+        </div>
+        <button id="setUserBtn">Set User</button>
+        <div id="currentUserDisplay" class="current-user" style="display: none;">
+            Current user: <strong id="currentUserId"></strong>
+        </div>
+    </section>
+
+    <!-- Create Workflow -->
+    <section id="create-workflow">
+        <h2>Create Workflow</h2>
+        <div class="form-group">
+            <label for="wsiPathInput">WSI Path</label>
+            <input type="text" id="wsiPathInput" placeholder="/path/to/file.svs">
+        </div>
+        <div class="form-group">
+            <label for="branchInput">Branch</label>
+            <input type="text" id="branchInput" placeholder="branch-1">
+        </div>
+        <div class="form-group">
+            <label for="jobTypeSelect">Job Type</label>
+            <select id="jobTypeSelect">
+                <option value="CELL_SEGMENTATION">CELL_SEGMENTATION</option>
+                <option value="TISSUE_MASK">TISSUE_MASK</option>
+            </select>
+        </div>
+        <button id="createWorkflowBtn">Create Workflow</button>
+        <div id="createMessage"></div>
+    </section>
+
+    <!-- My Workflows -->
+    <section id="workflows-section">
+        <h2>My Workflows</h2>
+        <div id="workflowsContainer">
+            <p style="color: #999;">No workflows yet. Create one above.</p>
+        </div>
+    </section>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
