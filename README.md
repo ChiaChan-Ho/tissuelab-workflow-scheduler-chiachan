@@ -1,6 +1,6 @@
 # Branch-Aware Multi-Tenant Workflow Scheduler
 
-A lightweight workflow scheduler for Whole Slide Image (WSI) processing tasks, built with FastAPI, featuring branch-aware execution, multi-tenant isolation, and real-time progress monitoring. This implementation integrates a stubbed version of InstanSeg for cell segmentation and tissue mask generation.
+A lightweight workflow scheduler for Whole Slide Image (WSI) processing tasks, built with FastAPI, featuring branch-aware execution, multi-tenant isolation, and real-time progress monitoring. This implementation integrates InstanSeg for cell segmentation with optimizations including tile batching, concurrent inference, and background tile filtering.
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@ It supports:
 - **Multi-tenant isolation** based on `X-User-ID`
 - **Active user throttling**: max 3 users with active running jobs
 - **Real-time UI updates** via frontend polling
-- **WSI tile-based processing** with InstanSeg stubs
+- **WSI tile-based processing** with InstanSeg integration and performance optimizations
 
 All state is held in-memory, making the system simple to run locally.
 
@@ -40,6 +40,7 @@ All state is held in-memory, making the system simple to run locally.
 - Job cancellation (only when pending)
 - JSON result export per job
 - Simple HTML/JS frontend included
+- **InstanSeg optimizations**: concurrent tile inference, background tile filtering, memory-efficient processing
 
 ## Architecture
 
@@ -49,7 +50,8 @@ The system is divided into clear, modular components:
 - REST API for workflows & jobs
 - In-memory state store
 - Background scheduler loop enforcing branch/user constraints
-- Async workers performing WSI tile processing
+- Async workers performing WSI tile processing with InstanSeg
+- Optimized tile processing: concurrent inference (up to 4 tiles), background filtering, memory-efficient streaming
 
 **Scheduling Logic**
 - One running job per branch
@@ -71,6 +73,7 @@ This architecture enables predictable execution order while allowing simple para
 - Python 3.8+
 - macOS or Linux
 - `openslide` system library installed
+- PyTorch (required by InstanSeg)
 
 ### Installation
 
@@ -81,6 +84,14 @@ cd tissuelab-workflow-scheduler-chiachan
 python3 -m venv venv
 source venv/bin/activate
 
+# Install PyTorch first (required by InstanSeg)
+# For CPU-only (recommended for testing):
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# For GPU support (if available):
+# pip install torch torchvision torchaudio
+
+# Install other dependencies
 pip install -r requirements.txt
 ```
 
@@ -95,6 +106,10 @@ brew install openslide
 ```bash
 sudo apt-get install openslide-tools
 ```
+
+### InstanSeg Model Setup
+
+InstanSeg will automatically download the `brightfield_nuclei` model on first use. The model is cached locally for subsequent runs.
 
 ### Run the backend
 
@@ -149,8 +164,6 @@ curl -H "X-User-ID: user-1" \
 
 ## Exported Segmentation Results
 
-**Note:** The example polygon outputs shown below are illustrative. In this demo implementation, `run_instanseg_on_tile()` returns an empty polygon list (stubbed inference), so exported `{job_id}_cells.json` files will contain `"polygons": []`.
-
 Results are stored under:
 
 ```
@@ -164,20 +177,44 @@ results/
 ```json
 {
   "job_id": "abc123",
-  "polygons": []
+  "polygons": [
+    {
+      "points": [[100, 200], [150, 200], [150, 250], [100, 250]],
+      "label": 1,
+      "area": 2500.0,
+      "tile_origin": {"x": 0, "y": 0}
+    }
+  ]
 }
 ```
+
+Each polygon represents a detected cell with bounding-box coordinates in full-slide space.
 
 ### Example tissue mask output
 
 ```json
 {
   "job_id": "abc123",
-  "tiles": [...]
+  "tiles": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 512,
+      "h": 512,
+      "mask_mean": 0.75
+    }
+  ]
 }
 ```
 
-Polygon lists are empty in this demo because InstanSeg inference is stubbed.
+### Performance Optimizations
+
+The InstanSeg pipeline includes several optimizations for large WSIs:
+
+- **Concurrent inference**: Up to 4 tiles processed in parallel using async executors
+- **Background filtering**: Tiles with <5% tissue content are skipped before inference
+- **Memory-efficient processing**: Tiles are processed in a streaming fashion to handle large files
+- **Error resilience**: Individual tile failures don't crash the entire job
 
 ## Scaling to 10×
 
@@ -220,10 +257,11 @@ Screenshots are available in the `/screenshots` directory:
 
 ## Notes
 
-- InstanSeg inference is stubbed in this implementation
-- WSI samples used for testing can be downloaded from:
+- **InstanSeg Integration**: The system uses the real InstanSeg model (`brightfield_nuclei`) for cell segmentation. If InstanSeg fails to import or initialize, the system falls back gracefully with logged warnings.
+- **WSI Test Data**: Sample Whole Slide Images can be downloaded from:
   - https://openslide.cs.cmu.edu/download/openslide-testdata/Aperio/
-- All state is in-memory and resets on server restart
+- **State Management**: All state is in-memory and resets on server restart
+- **Large File Handling**: The pipeline is optimized for large WSIs with concurrent processing and memory-efficient tile streaming
 
 ## License
 

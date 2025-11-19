@@ -5,3 +5,6 @@ instanseg
 openslide-python
 pillow
 numpy
+scikit-image
+instanseg-torch
+requests
